@@ -19,9 +19,12 @@
 // no-deploy vercel.json and the main vercel.json turns `forum` deploys off.
 import { applyPost, checkPost, EMPTY_FORUM, LIMITS, parseForum, rateProblem, type ForumFile, type ForumSite } from "./core";
 import { cleanReport, overLimit, reportsToken, saveReport } from "../reports-github";
+import { SITE } from "@/site.config";
 
 export const FORUM_BRANCH = "forum";
-export const FORUM_FILE = "forum.json";
+// One `forum` branch serves every site in this repo: each site has its own file
+// (forum-<key>.json) and its own held/<site>/ folder (DECISIONS.md, "One repo for the card engine").
+export const FORUM_FILE = `forum-${SITE.key}.json`;
 
 export const forumRawUrl = (repo: string) => `https://raw.githubusercontent.com/${repo}/${FORUM_BRANCH}/${FORUM_FILE}`;
 /** The browser's copy: GitHub's API, which (unlike raw) is never minutes stale. */
@@ -135,7 +138,7 @@ export async function handleForumPost(req: Request, site: ForumSite): Promise<Re
   if (c.hold) {
     const at = new Date().toISOString().slice(0, 19) + "Z";
     const id = Math.random().toString(36).slice(2, 10);
-    const path = `held/${at.slice(0, 10)}/${at.slice(11, 19).replace(/:/g, "")}-${id}.json`;
+    const path = `held/${site.site}/${at.slice(0, 10)}/${at.slice(11, 19).replace(/:/g, "")}-${id}.json`;
     const status = await putFile(site.repo, path, JSON.stringify({ at, reason: c.hold, ...c.input }, null, 1) + "\n", `forum: post held for review (${c.hold})`, null).catch(() => 0);
     if (status !== 201) return json({ error: "Couldn't post that right now. Please try again in a minute." }, 502);
     const r = cleanReport({ kind: "other", issue: "forum-held", page: site.base, product: `forum held post ${path}`, note: `A forum post is waiting for review (${c.hold}): ${path} on the forum branch.` }, site.site);

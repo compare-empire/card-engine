@@ -7,3 +7,17 @@ out
 *.tsbuildinfo
 .vercel
 data/.cache
+
+# Written by scripts/use-site.sh: the selected site's files, from sites/<id>/
+/.site
+/src/site.config.ts
+/src/content
+/data
+/public
+/src/app/apple-icon.png
+/src/app/favicon.ico
+/src/app/icon.svg
+/src/app/opengraph-image.jpg
+/src/app/opengraph-image.alt.txt
+/src/app/twitter-image.jpg
+/src/app/twitter-image.alt.txt

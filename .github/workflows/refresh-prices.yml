@@ -1,0 +1,111 @@
+name: Refresh prices
+
+# The daily import, one site per run: TCGCSV + stores + budgeted eBay →
+# sites/<id>/data → commit to main. The commit SUBJECT carries [deploy:<id>],
+# so it releases that site only (scripts/vercel-ignore-build.sh).
+#
+# One cron per site. Each hour equals that site's SITE.ebay.runHourUtc, so
+# Lorcana, YGO and Gundam never overlap on their shared eBay app.
+# Every site keeps its own eBay keys: secrets <PREFIX>_EBAY_CLIENT_ID and
+# <PREFIX>_EBAY_CLIENT_SECRET (GUNDAM, LORCANA, YGO, CYBERPUNK).
+
+on:
+  schedule:
+    - cron: "17 0 * * *"   # cyberpunk
+    - cron: "17 6 * * *"   # lorcana
+    - cron: "17 12 * * *"  # ygo
+    - cron: "17 18 * * *"  # gundam
+  workflow_dispatch:
+    inputs:
+      site:
+        description: "Which site"
+        type: choice
+        options: [gundam, lorcana, ygo, cyberpunk]
+        required: true
+      ebay:
+        description: "Spend eBay calls this run"
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+
+jobs:
+  pick:
+    runs-on: ubuntu-latest
+    outputs:
+      site: ${{ steps.pick.outputs.site }}
+    steps:
+      - id: pick
+        env:
+          SCHEDULE: ${{ github.event.schedule }}
+          INPUT: ${{ inputs.site }}
+        run: |
+          case "${SCHEDULE:-}" in
+            "17 0 * * *") site=cyberpunk ;;
+            "17 6 * * *") site=lorcana ;;
+            "17 12 * * *") site=ygo ;;
+            "17 18 * * *") site=gundam ;;
+            *) site="$INPUT" ;;
+          esac
+          [ -n "$site" ] || { echo "No site for this run."; exit 1; }
+          echo "site=$site" >> "$GITHUB_OUTPUT"
+          echo "Refreshing $site"
+
+  import:
+    needs: pick
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    concurrency:
+      group: refresh-prices-${{ needs.pick.outputs.site }}
+      cancel-in-progress: false
+    env:
+      SITE_ID: ${{ needs.pick.outputs.site }}
+      PREFIX: ${{ needs.pick.outputs.site == 'gundam' && 'GUNDAM' || needs.pick.outputs.site == 'lorcana' && 'LORCANA' || needs.pick.outputs.site == 'ygo' && 'YGO' || 'CYBERPUNK' }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: bash scripts/use-site.sh "$SITE_ID"
+      - name: Import
+        env:
+          EBAY_CLIENT_ID: ${{ secrets[format('{0}_EBAY_CLIENT_ID', env.PREFIX)] }}
+          EBAY_CLIENT_SECRET: ${{ secrets[format('{0}_EBAY_CLIENT_SECRET', env.PREFIX)] }}
+          EBAY_REFRESH: ${{ github.event_name == 'workflow_dispatch' && !inputs.ebay && 'false' || 'true' }}
+        run: npx tsx scripts/import-all.ts
+      # Gunpla (SITE.kits, Gundam only): hobby shops' kits, matched by JAN.
+      # After the card import, which writes the day's exchange rates it reads.
+      # A kit failure never holds back card prices: the ops monitor flags kit
+      # data older than 54 hours.
+      - name: Import model kits
+        if: env.SITE_ID == 'gundam'
+        continue-on-error: true
+        run: npx tsx scripts/import-kits.ts
+      - name: Commit data (this commit is the site's daily release)
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "sites/$SITE_ID/data"
+          if git diff --cached --quiet; then
+            echo "No data changes."
+            exit 0
+          fi
+          git commit -m "data($SITE_ID): daily prices $(date -u +%F) [deploy:$SITE_ID]" -m "Written by refresh-prices.yml. The one scheduled production build of $SITE_ID today; the other sites skip it."
+          for i in 1 2 3 4; do
+            git push origin HEAD:main && exit 0
+            sleep $((2 ** i)); git pull --rebase origin main
+          done
+          exit 1
+      - name: IndexNow
+        if: success()
+        env:
+          INDEXNOW_KEY: ${{ secrets[format('{0}_INDEXNOW_KEY', env.PREFIX)] }}
+        run: |
+          domain="$(sed -n 's/^  domain: "\(.*\)",$/\1/p' "sites/$SITE_ID/site.config.ts" | head -n 1)"
+          NEXT_PUBLIC_SITE_URL="https://$domain" npx tsx scripts/indexnow-submit.ts || true

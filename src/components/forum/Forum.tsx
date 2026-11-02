@@ -11,6 +11,7 @@
 // Styling: plain fm-* classes in ./forum.css, coloured by the site's --fm-*
 // variables (set in its globals.css), so it reads as part of each site.
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import { SITE } from "@/site.config";
 import {
   ago,
   findThread,
@@ -78,8 +79,8 @@ function merge(base: ForumFile, pending: ForumThread[]): ForumFile {
 
 async function fetchFresh(repo: string): Promise<ForumFile | null> {
   const urls: [string, RequestInit][] = [
-    [`https://api.github.com/repos/${repo}/contents/forum.json?ref=forum`, { headers: { Accept: "application/vnd.github.raw" }, cache: "no-store" }],
-    [`https://raw.githubusercontent.com/${repo}/forum/forum.json`, { cache: "no-store" }],
+    [`https://api.github.com/repos/${repo}/contents/forum-${SITE.key}.json?ref=forum`, { headers: { Accept: "application/vnd.github.raw" }, cache: "no-store" }],
+    [`https://raw.githubusercontent.com/${repo}/forum/forum-${SITE.key}.json`, { cache: "no-store" }],
   ];
   for (const [url, init] of urls) {
     try {

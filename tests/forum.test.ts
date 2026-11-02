@@ -21,7 +21,8 @@ import {
   EMPTY_FORUM,
   type ForumSite,
 } from "../src/lib/forum/core";
-import { serialiseForum } from "../src/lib/forum/store";
+import { serialiseForum, FORUM_FILE, forumRawUrl } from "../src/lib/forum/store";
+import { SITE } from "../src/site.config";
 import { FORUM_SITE } from "../src/lib/forum/site";
 
 const site: ForumSite = { ...FORUM_SITE, hosts: ["example.com"] };
@@ -36,7 +37,7 @@ test("this site's forum settings are complete", () => {
   assert.ok(FORUM_SITE.categories.length >= 3, "an empty forum shows its topics, so it needs a few");
   assert.equal(new Set(FORUM_SITE.categories.map((c) => c.key)).size, FORUM_SITE.categories.length);
   for (const c of FORUM_SITE.categories) assert.match(c.key, /^[a-z0-9-]+$/);
-  assert.match(FORUM_SITE.repo, /^Specifxx\/[A-Za-z0-9-]+$/);
+  assert.match(FORUM_SITE.repo, /^(Specifxx|compare-empire)\/[A-Za-z0-9-]+$/);
   assert.ok(FORUM_SITE.hosts.length > 0);
   assert.equal(FORUM_SITE.base, "/forum");
 });
@@ -140,4 +141,11 @@ test("the forum branch never deploys, and nothing private is stored", () => {
   assert.doesNotMatch(store, /x-forwarded-for[^\n]*JSON\.stringify|ip:\s/i);
   assert.ok(existsSync("src/app/api/forum/route.ts"));
   assert.doesNotMatch(readFileSync("src/app/api/forum/route.ts", "utf8"), /export (async )?function GET/, "POST only");
+});
+
+test("each site in the card-engine repo keeps its own forum file on the shared forum branch", () => {
+  assert.equal(FORUM_FILE, `forum-${SITE.key}.json`);
+  assert.ok(forumRawUrl(FORUM_SITE.repo).endsWith(`/forum/forum-${SITE.key}.json`));
+  const client = readFileSync("src/components/forum/Forum.tsx", "utf8");
+  assert.ok(!/\/forum\.json/.test(client), "Forum.tsx must read forum-<key>.json, never the shared forum.json");
 });

@@ -9,5 +9,6 @@
       "ops-status": false
     }
   },
-  "ignoreCommand": "bash scripts/vercel-ignore-build.sh"
+  "ignoreCommand": "bash scripts/vercel-ignore-build.sh",
+  "buildCommand": "bash scripts/use-site.sh --copy && next build"
 }

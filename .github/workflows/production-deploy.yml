@@ -1,0 +1,86 @@
+name: Production deploy
+# Fallback and manual release. Each site's daily data commit (refresh-prices.yml,
+# [deploy:<id>]) normally releases it. At 22:00 UTC this lands one empty commit
+# whose subject carries [deploy:<id>] for every site that has not released in
+# 20 hours; "Run workflow" releases one site, or all of them with [deploy]
+# (urgent engine fixes only).
+
+on:
+  schedule:
+    - cron: "0 22 * * *"
+  workflow_dispatch:
+    inputs:
+      site:
+        description: "Which site to release (all = every site)"
+        type: choice
+        options: [gundam, lorcana, ygo, cyberpunk, all]
+        required: true
+      reason:
+        description: "Optional note, recorded in the release commit message"
+        type: string
+        required: false
+
+concurrency:
+  group: production-deploy
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 300
+
+      - name: Decide which sites need a release
+        id: check
+        env:
+          EVENT: ${{ github.event_name }}
+          SITE: ${{ inputs.site }}
+        run: |
+          set -euo pipefail
+          if [ "$EVENT" != "schedule" ]; then
+            if [ "$SITE" = "all" ]; then markers="[deploy]"; else markers="[deploy:$SITE]"; fi
+          else
+            recent="$(git log --since='20 hours ago' --format=%s)"
+            markers=""
+            for id in $(ls sites); do
+              if printf '%s\n' "$recent" | grep -qiF -e "[deploy:$id]" -e "[deploy]"; then
+                echo "$id released in the last 20 hours."
+              else
+                markers="$markers [deploy:$id]"
+              fi
+            done
+          fi
+          markers="$(echo "$markers" | xargs)"
+          echo "markers=$markers" >> "$GITHUB_OUTPUT"
+          [ -n "$markers" ] && echo "Releasing: $markers" || echo "Every site released in the last 20 hours. Nothing to do."
+
+      - name: Land the release commit (Vercel builds the sites it names)
+        if: steps.check.outputs.markers != ''
+        env:
+          REASON: ${{ inputs.reason }}
+          EVENT: ${{ github.event_name }}
+          MARKERS: ${{ steps.check.outputs.markers }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          kind=manual; [ "$EVENT" = "schedule" ] && kind=scheduled
+          subject="release: $kind production deploy $MARKERS"
+          body="Builds the current main on Vercel for the sites named in the subject. Each site's project skips any push that does not name it (scripts/vercel-ignore-build.sh)."
+          if [ -n "${REASON:-}" ]; then
+            git commit --allow-empty -m "$subject" -m "$body" -m "Reason: $REASON"
+          else
+            git commit --allow-empty -m "$subject" -m "$body"
+          fi
+          for i in 1 2 3 4; do
+            git push origin HEAD:main && exit 0
+            sleep $((2 ** i)); git pull --rebase origin main
+          done
+          exit 1

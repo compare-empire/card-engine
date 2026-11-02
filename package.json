@@ -1,5 +1,5 @@
 {
-  "name": "gundamcompare",
+  "name": "card-engine",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -11,7 +11,9 @@
     "test": "node --import tsx --test tests/*.test.ts",
     "import:all": "tsx scripts/import-all.ts",
     "ops:monitor": "tsx scripts/ops-monitor.ts",
-    "indexnow": "tsx scripts/indexnow-submit.ts"
+    "indexnow": "tsx scripts/indexnow-submit.ts",
+    "site": "bash scripts/use-site.sh",
+    "check:all": "bash scripts/check-all-sites.sh"
   },
   "dependencies": {
     "@vercel/analytics": "^1.3.1",

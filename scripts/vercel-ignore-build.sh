@@ -1,40 +1,25 @@
 #!/usr/bin/env bash
-# Vercel "Ignored Build Step" (vercel.json `ignoreCommand`), copied from Rift
-# Compare's scripts/vercel-ignore-build.sh, where it ended a run of exhausted
-# Neon projects: every production build re-renders the site and clears the ISR
-# page cache, so 10–30 pushes a day cost more than all real traffic.
-#
-#   exit 0 → skip (no deployment)      exit 1 → build
-#
-# Production builds only when the commit SUBJECT (first line, never the body)
-# carries [deploy] (any case). .github/workflows/production-deploy.yml lands one
-# such commit a day after the price import. Preview/development builds need
-# [preview] in the subject. claude/* branches never deploy (vercel.json).
-# An unreadable message builds production (fail open) and never a preview.
+# Vercel "Ignored Build Step" for the one-repo card engine. Every site's Vercel
+# project watches this repo and sets SITE_ID, so the gate is per site:
+#   [deploy]          release EVERY site (an urgent engine release)
+#   [deploy:<id>]     release that site only (its daily data commit)
+#   exit 0 → skip      exit 1 → build
+# Preview/development builds need [preview] in the subject. The SUBJECT only:
+# a body that mentions a marker never deploys. Unreadable message → build
+# production (fail open). No SITE_ID → never build (a misconfigured project
+# must not ship another site's pages).
 set -u
-
 msg="${VERCEL_GIT_COMMIT_MESSAGE:-}"
 [ -z "$msg" ] && msg="$(git log -1 --format=%B 2>/dev/null || true)"
 subject="$(printf '%s\n' "$msg" | head -n 1)"
 env="${VERCEL_ENV:-}"
-
+site="${SITE_ID:-}"
+if [ -z "$site" ]; then echo "[ignore-build] SITE_ID is not set on this Vercel project — skipping."; exit 0; fi
 if [ "$env" = "preview" ] || [ "$env" = "development" ]; then
-  if [ -n "$subject" ] && printf '%s' "$subject" | grep -qiF -- '[preview]'; then
-    echo "[ignore-build] $env build requested by [preview] in the subject."
-    exit 1
-  fi
-  echo "[ignore-build] $env builds are off unless the commit subject carries [preview]."
-  exit 0
+  printf '%s' "$subject" | grep -qiF -- '[preview]' && { echo "[ignore-build] [preview] — building $site."; exit 1; }
+  echo "[ignore-build] previews are off unless the subject carries [preview]."; exit 0
 fi
-
-if [ -z "$msg" ]; then
-  echo "[ignore-build] commit message unreadable — building production to fail open."
-  exit 1
-fi
-
-if printf '%s' "$subject" | grep -qiF -- '[deploy]'; then
-  echo "[ignore-build] [deploy] in the subject — building production."
-  exit 1
-fi
-echo "[ignore-build] no [deploy] in the subject — skipping; the daily release will ship it."
-exit 0
+[ -z "$msg" ] && { echo "[ignore-build] message unreadable — building $site (fail open)."; exit 1; }
+if printf '%s' "$subject" | grep -qiF -- '[deploy]'; then echo "[ignore-build] [deploy] — releasing every site, $site included."; exit 1; fi
+if printf '%s' "$subject" | grep -qiF -- "[deploy:$site]"; then echo "[ignore-build] [deploy:$site] — building $site."; exit 1; fi
+echo "[ignore-build] nothing for $site in the subject — skipping."; exit 0

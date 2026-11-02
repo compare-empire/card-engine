@@ -1,0 +1,35 @@
+name: Ops monitor
+# Every three hours, from GitHub (so it works when a site is what broke): live
+# site, data freshness, store imports and the eBay budget, for every site in
+# one run. A failing site fails the run, and GitHub sends ONE email for it.
+on:
+  schedule:
+    - cron: "40 */3 * * *"
+  workflow_dispatch:
+jobs:
+  monitor:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { site: gundam, prefix: GUNDAM, url: "https://gundamcompare.com" }
+          - { site: lorcana, prefix: LORCANA, url: "https://lorcanacompare.com" }
+          - { site: ygo, prefix: YGO, url: "https://ygocompare.com" }
+          - { site: cyberpunk, prefix: CYBERPUNK, url: "https://cyberpunkcompare.com" }
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: bash scripts/use-site.sh ${{ matrix.site }}
+      - env:
+          NEXT_PUBLIC_SITE_URL: ${{ matrix.url }}
+          EBAY_CLIENT_ID: ${{ secrets[format('{0}_EBAY_CLIENT_ID', matrix.prefix)] }}
+          EBAY_CLIENT_SECRET: ${{ secrets[format('{0}_EBAY_CLIENT_SECRET', matrix.prefix)] }}
+        run: npx tsx scripts/ops-monitor.ts

@@ -1,4 +1,5 @@
 name: CI
+# The engine against every site in sites/: one job per site.
 on:
   pull_request:
   push:
@@ -7,6 +8,10 @@ jobs:
   check:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        site: [gundam, lorcana, ygo, cyberpunk]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -14,6 +19,7 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm ci
+      - run: bash scripts/use-site.sh ${{ matrix.site }}
       - run: npm run typecheck
       - run: npm run lint
       - run: npm test

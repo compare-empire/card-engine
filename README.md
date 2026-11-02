@@ -53,6 +53,11 @@ An engine change on `main` reaches each site with that site's next daily release
 
 ## Workflows
 
+A site's scheduled jobs (import, monitor, fallback release) run from this repo
+only once `sites/<id>/LIVE` exists. The file is added in the commit that
+switches that site over (its Vercel project points here, its secrets are set
+and the old repo's crons are off), so no site is ever imported twice.
+
 - `refresh-prices.yml`: one cron per site; imports into `sites/<id>/data` and
   commits `data(<id>): ... [deploy:<id>]`.
 - `ci.yml`: typecheck, lint and tests for each site.

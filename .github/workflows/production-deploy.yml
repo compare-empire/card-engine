@@ -50,7 +50,9 @@ jobs:
             recent="$(git log --since='20 hours ago' --format=%s)"
             markers=""
             for id in $(ls sites); do
-              if printf '%s\n' "$recent" | grep -qiF -e "[deploy:$id]" -e "[deploy]"; then
+              if [ ! -f "sites/$id/LIVE" ]; then
+                echo "$id is not live from this repo yet."
+              elif printf '%s\n' "$recent" | grep -qiF -e "[deploy:$id]" -e "[deploy]"; then
                 echo "$id released in the last 20 hours."
               else
                 markers="$markers [deploy:$id]"

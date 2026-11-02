@@ -4,6 +4,10 @@ name: Refresh prices
 # sites/<id>/data → commit to main. The commit SUBJECT carries [deploy:<id>],
 # so it releases that site only (scripts/vercel-ignore-build.sh).
 #
+# A schedule runs a site only once `sites/<id>/LIVE` exists: the file is added
+# when that site's Vercel project and secrets are switched to this repo, so the
+# old repo and this one never both import (or spend eBay calls) for a site.
+#
 # One cron per site. Each hour equals that site's SITE.ebay.runHourUtc, so
 # Lorcana, YGO and Gundam never overlap on their shared eBay app.
 # Every site keeps its own eBay keys: secrets <PREFIX>_EBAY_CLIENT_ID and
@@ -36,6 +40,10 @@ jobs:
     outputs:
       site: ${{ steps.pick.outputs.site }}
     steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          sparse-checkout: sites
       - id: pick
         env:
           SCHEDULE: ${{ github.event.schedule }}
@@ -49,11 +57,16 @@ jobs:
             *) site="$INPUT" ;;
           esac
           [ -n "$site" ] || { echo "No site for this run."; exit 1; }
+          if [ -n "${SCHEDULE:-}" ] && [ ! -f "sites/$site/LIVE" ]; then
+            echo "$site is not live from this repo yet (no sites/$site/LIVE): skipping the scheduled run."
+            echo "site=" >> "$GITHUB_OUTPUT"; exit 0
+          fi
           echo "site=$site" >> "$GITHUB_OUTPUT"
           echo "Refreshing $site"
 
   import:
     needs: pick
+    if: needs.pick.outputs.site != ''
     runs-on: ubuntu-latest
     timeout-minutes: 120
     concurrency:
@@ -86,6 +99,11 @@ jobs:
         if: env.SITE_ID == 'gundam'
         continue-on-error: true
         run: npx tsx scripts/import-kits.ts
+      # The Compare Empire network (scripts/family-sync.ts): this site's best deals and pre-orders for
+      # its sisters, and their feeds for this site's "Also in this cluster" blocks. Never fatal.
+      - name: Family feed
+        continue-on-error: true
+        run: npx tsx scripts/family-sync.ts
       - name: Commit data (this commit is the site's daily release)
         run: |
           set -euo pipefail

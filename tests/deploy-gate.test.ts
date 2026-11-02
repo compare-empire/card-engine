@@ -32,3 +32,11 @@ test("every Vercel build selects its site by copy", () => {
   assert.match(v.buildCommand ?? "", /scripts\/use-site\.sh --copy && next build/);
   assert.equal(v.ignoreCommand, "bash scripts/vercel-ignore-build.sh");
 });
+test("a site's scheduled jobs run from this repo only once sites/<id>/LIVE exists", () => {
+  const refresh = readFileSync(".github/workflows/refresh-prices.yml", "utf8");
+  const monitor = readFileSync(".github/workflows/ops-monitor.yml", "utf8");
+  const deploy = readFileSync(".github/workflows/production-deploy.yml", "utf8");
+  assert.match(refresh, /\[ ! -f "sites\/\$site\/LIVE" \]/);
+  assert.match(monitor, /sites\/\$\{\{ matrix\.site \}\}\/LIVE/);
+  assert.match(deploy, /\[ ! -f "sites\/\$id\/LIVE" \]/);
+});

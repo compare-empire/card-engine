@@ -52,16 +52,18 @@ export interface FamilySite {
 }
 
 const RAW = "https://raw.githubusercontent.com/Specifxx";
+/** Gundam, Lorcana, YGO and Cyberpunk share one repo since 2026-11-02 (DECISIONS.md, "One repo for the card engine"). */
+const CARD_ENGINE = "https://raw.githubusercontent.com/compare-empire/card-engine/main/sites";
 
 export const FAMILY_SITES: readonly FamilySite[] = [
   { id: "rift", name: "RiftCompare", url: "https://riftcompare.com", label: "Riftbound card prices", topic: "Riftbound", clusters: ["cards"], feed: `${RAW}/TCGEmpire/main/data/public/family/family-feed.json`, report: "/market/report" },
   { id: "op", name: "OP Compare", url: "https://opcompare.app", label: "One Piece card prices", topic: "One Piece", clusters: ["cards"], feed: `${RAW}/OpCompare/snapshot/family-feed.json`, report: "/market" },
   { id: "dex", name: "DexCompare", url: "https://dexcompare.app", label: "Pokémon TCG sealed prices", topic: "Pokémon", clusters: ["cards"], feed: `${RAW}/CompareEmpire/main/apps/dexcompare-sealed/data/public/family/family-feed.json` },
   { id: "mtg", name: "MTG Compare", url: "https://mtgcompare.app", label: "Magic: The Gathering sealed prices", topic: "Magic", clusters: ["cards"], feed: `${RAW}/mtgcompare/main/data/public/family/family-feed.json` },
-  { id: "gundam", name: "Gundam Compare", url: "https://gundamcompare.com", label: "Gundam card and Gunpla prices", topic: "Gundam", clusters: ["cards", "hobby"], feed: `${RAW}/GundamCompare/main/data/public/family/family-feed.json`, report: "/price-report" },
-  { id: "lorcana", name: "Lorcana Compare", url: "https://lorcanacompare.com", label: "Disney Lorcana card prices", topic: "Lorcana", clusters: ["cards"], feed: `${RAW}/lorcanacompare/main/data/public/family/family-feed.json`, report: "/price-report" },
-  { id: "ygo", name: "YGO Compare", url: "https://ygocompare.com", label: "Yu-Gi-Oh! card prices", topic: "Yu-Gi-Oh!", clusters: ["cards"], feed: `${RAW}/ygocompare/main/data/public/family/family-feed.json`, report: "/price-report" },
-  { id: "cyberpunk", name: "Cyberpunk Compare", url: "https://cyberpunkcompare.com", label: "Cyberpunk TCG prices", topic: "Cyberpunk TCG", clusters: ["cards"], feed: `${RAW}/cyberpunkcompare/main/data/public/family/family-feed.json`, report: "/price-report" },
+  { id: "gundam", name: "Gundam Compare", url: "https://gundamcompare.com", label: "Gundam card and Gunpla prices", topic: "Gundam", clusters: ["cards", "hobby"], feed: `${CARD_ENGINE}/gundam/data/public/family/family-feed.json`, report: "/price-report" },
+  { id: "lorcana", name: "Lorcana Compare", url: "https://lorcanacompare.com", label: "Disney Lorcana card prices", topic: "Lorcana", clusters: ["cards"], feed: `${CARD_ENGINE}/lorcana/data/public/family/family-feed.json`, report: "/price-report" },
+  { id: "ygo", name: "YGO Compare", url: "https://ygocompare.com", label: "Yu-Gi-Oh! card prices", topic: "Yu-Gi-Oh!", clusters: ["cards"], feed: `${CARD_ENGINE}/ygo/data/public/family/family-feed.json`, report: "/price-report" },
+  { id: "cyberpunk", name: "Cyberpunk Compare", url: "https://cyberpunkcompare.com", label: "Cyberpunk TCG prices", topic: "Cyberpunk TCG", clusters: ["cards"], feed: `${CARD_ENGINE}/cyberpunk/data/public/family/family-feed.json`, report: "/price-report" },
   { id: "wargame", name: "WargameCompare", url: "https://wargamecompare.com", label: "Miniature wargame prices", topic: "Wargames", clusters: ["hobby"], feed: `${RAW}/wargamecompare/main/data/family/family-feed.json`, report: "/price-report" },
   { id: "figure", name: "FigureCompare", url: "https://figurecompare.com", label: "Anime figure prices", topic: "Anime figures", clusters: ["hobby"], feed: `${RAW}/figurecompare/main/data/family/family-feed.json` },
   { id: "empire", name: "Compare Empire", url: "https://compareempire.com", label: "Tech and appliance prices", topic: "Tech", clusters: ["tech"], feed: `${RAW}/compareempiretake2/claude/admiring-newton-5xtu2p/data/family/family-feed.json` },

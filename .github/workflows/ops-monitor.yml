@@ -1,11 +1,16 @@
 name: Ops monitor
 # Every three hours, from GitHub (so it works when a site is what broke): live
 # site, data freshness, store imports and the eBay budget, for every site in
-# one run. A failing site fails the run, and GitHub sends ONE email for it.
+# one run. Only a red check fails the run (GitHub's one email to the owner);
+# every result, amber included, goes to the `ops-status` branch for Empire HQ
+# and the Monday report, one file per site (<id>/status.json). A site is
+# checked once `sites/<id>/LIVE` exists (it is switched to this repo).
 on:
   schedule:
     - cron: "40 */3 * * *"
   workflow_dispatch:
+permissions:
+  contents: write # the ops-status branch only
 jobs:
   monitor:
     runs-on: ubuntu-latest
@@ -27,9 +32,56 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm ci
-      - run: bash scripts/use-site.sh ${{ matrix.site }}
-      - env:
+      - id: live
+        run: '[ -f "sites/${{ matrix.site }}/LIVE" ] && echo "live=true" >> "$GITHUB_OUTPUT" || echo "${{ matrix.site }} is not live from this repo yet: skipped."'
+      - if: steps.live.outputs.live == 'true'
+        run: bash scripts/use-site.sh ${{ matrix.site }}
+      - if: steps.live.outputs.live == 'true'
+        env:
           NEXT_PUBLIC_SITE_URL: ${{ matrix.url }}
           EBAY_CLIENT_ID: ${{ secrets[format('{0}_EBAY_CLIENT_ID', matrix.prefix)] }}
           EBAY_CLIENT_SECRET: ${{ secrets[format('{0}_EBAY_CLIENT_SECRET', matrix.prefix)] }}
         run: npx tsx scripts/ops-monitor.ts
+      - name: Keep the status file for the publish job
+        if: always() && steps.live.outputs.live == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ops-status-${{ matrix.site }}
+          path: ops-status.json
+          if-no-files-found: ignore
+          retention-days: 1
+
+  # Empire HQ (riftcompare.com/admin/hq) and the Monday report read
+  # ops-status/<id>/status.json from this public branch: one orphan commit,
+  # force-pushed by this single job so the four sites never race. Status and our
+  # own sentences only.
+  publish:
+    needs: monitor
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: ops-status-*
+          path: statuses
+      - name: Publish status for Empire HQ
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          d=$(mktemp -d)
+          n=0
+          for f in statuses/ops-status-*/ops-status.json; do
+            [ -f "$f" ] || continue
+            id=$(basename "$(dirname "$f")"); id=${id#ops-status-}
+            mkdir -p "$d/$id" && cp "$f" "$d/$id/status.json"; n=$((n+1))
+          done
+          [ "$n" -gt 0 ] || { echo "No status files written."; exit 0; }
+          cd "$d"
+          # Vercel reads vercel.json from the deployed commit, not from main: without
+          # this file every push here starts a build (2026-11-02).
+          printf '%s\n' '{ "git": { "deploymentEnabled": false }, "ignoreCommand": "exit 0" }' > vercel.json
+          git init -q -b ops-status && git add -A
+          git -c user.name="github-actions[bot]" -c user.email="41898283+github-actions[bot]@users.noreply.github.com" commit -qm "ops status"
+          git push -qf "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" ops-status

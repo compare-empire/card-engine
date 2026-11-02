@@ -21,6 +21,15 @@ project, domain, env vars, eBay keys and budget. The deploy gate is per site
 per day. The four histories are merged (site files moved into `sites/<id>/`
 first, so `git log --follow` reaches back).
 
+**Switching over one site at a time.** Every scheduled job checks for
+`sites/<id>/LIVE` first. Until that file exists the old repo keeps running the
+site; the commit that adds it is the switch, made with the Vercel reconnect
+and the old repo's crons turned off, so a site is never imported (or its eBay
+calls spent) twice. Cyberpunk goes first: smallest, newest, least traffic.
+
+**Ops status.** The four monitors publish one `ops-status` branch with
+`<id>/status.json`, written by a single job after the matrix so they never race.
+
 **Forum.** The four sites share one `forum` branch, each with its own
 `forum-<key>.json` and `held/<site>/` folder, rather than four branches.
 

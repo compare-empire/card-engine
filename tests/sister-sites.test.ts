@@ -19,16 +19,17 @@ test("sister sites: the eleven others, once each, with descriptive anchors", () 
   }
 });
 
-// The footer (owner-approved plan, 2026-11-02, "Sites that grow each other"): this site's own
-// clusters in full (lib/family-network.ts), never KaeYoung, plus one "A Compare Empire site" link.
-test("footer: own cluster from the family registry, plus the network page", async () => {
-  const { footerSisters, NETWORK_PAGE } = await import("@/lib/family-network");
-  const list = footerSisters(SITE.family.id);
-  assert.ok(list.length >= 3);
-  assert.ok(list.every((s) => s.clusters.includes("cards") || s.clusters.includes("hobby")));
-  assert.ok(!list.some((s) => /kaeyoung/i.test(s.url)));
-  assert.equal(new URL(NETWORK_PAGE).host, "compareempire.com");
-  const src = (await import("node:fs")).readFileSync("src/components/Footer.tsx", "utf8");
-  assert.match(src, /footerSisters\(SITE\.family\.id\)/);
-  assert.match(src, /A Compare Empire site/);
+// The footer (2026-11-08): one link to /our-sites, which lists every other site once by plain name; no
+// site-wide links to our own sites, never KaeYoung.
+test("footer: one link to /our-sites, which lists the other family sites", async () => {
+  const { FAMILY_SITES } = await import("@/lib/family-network");
+  const fs = await import("node:fs");
+  const footer = fs.readFileSync("src/components/Footer.tsx", "utf8");
+  assert.match(footer, /href="\/our-sites"/);
+  assert.doesNotMatch(footer, /footerSisters|NETWORK_PAGE|href="https?:\/\//, "no external site links in the footer");
+  const page = fs.readFileSync("src/app/our-sites/page.tsx", "utf8");
+  assert.match(page, /FAMILY_SITES\.filter\(\(s\) => s\.id !== SITE\.family\.id\)/);
+  assert.match(page, /rel="noopener"/);
+  assert.doesNotMatch(page, /nofollow|sponsored/);
+  assert.ok(FAMILY_SITES.length >= 10 && !FAMILY_SITES.some((s) => /kaeyoung/i.test(s.url)));
 });

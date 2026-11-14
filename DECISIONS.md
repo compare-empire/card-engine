@@ -65,3 +65,11 @@ biggest price drops once a week", sent as `weekly` beside the alert. RiftCompare
 (TCGEmpire DECISIONS.md, "A weekly biggest-drops email for the sister sites"): it rides the same double opt-in, builds
 one edition a week from this site's own `/alert-feed.json`, links only to this site's pages (no eBay or Amazon), and
 every email has a one-click stop. This site still stores no address and holds no mail key, and nothing new pops up.
+
+## 2026-11-14: eBay and Amazon are never the cheapest
+
+A product page on a sister engine showed an eBay row badged "Best price" and named eBay in its "Cheapest in" box:
+`priceRows` took the first in-stock row whatever its source, and `summarize` kept eBay as a market's cheapest (so list
+tiles and the quick buy could lead with an eBay price). Both now skip eBay and Amazon (`neverCheapest` in
+`src/lib/price-rows.ts`); eBay keeps its pinned row and its own ad list (`e`), and a paid alternative is never cheaper
+than the cheapest. `tests/never-cheapest.test.ts` pins it. The summary is rebuilt by the next import.

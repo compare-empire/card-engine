@@ -3,11 +3,11 @@ import assert from "node:assert/strict";
 import { SITE } from "@/site.config";
 
 // Every site links the whole Compare Empire family from its footer (owner,
-// 2026-10-27): the other eleven sites, each once (WargameCompare and FigureCompare joined 2026-10-28, Cyberpunk Compare 2026-11-01), over https, never itself,
+// 2026-10-27): the other TCG-side sites, each once (WargameCompare and FigureCompare joined 2026-10-28, Cyberpunk Compare 2026-11-01), over https, never itself,
 // with a descriptive anchor (the words a searcher types) rather than the brand.
 test("sister sites: the eleven others, once each, with descriptive anchors", () => {
   const hosts = SITE.sisterSites.map((s) => new URL(s.url).host);
-  assert.ok(SITE.sisterSites.length >= 9);
+  assert.ok(SITE.sisterSites.length >= 6); // 8 since the 2026-11-17 cull of non-TCG sites
   // Owner, 2026-11-17 (Grok growth report, item 9): no link to a site on the other side of the network (perfume, K-beauty,
   // car parts, cameras, figures, sports cards, tech); card sites and WargameCompare only.
   assert.ok(!hosts.some((h) => /figurecompare|camcompare|compareempire|sportscardcompare|scentcompare|kaeyoung|motorcompare/.test(h)), "no non-TCG site");

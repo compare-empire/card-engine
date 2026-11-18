@@ -9,6 +9,7 @@ import { JsonLd } from "@/components/JsonLd";
 import { AdSlot } from "@/components/AdSlot";
 import { abs } from "@/lib/site";
 import { renderPost } from "@/lib/post-render";
+import { ShareButton } from "@/components/ShareButton";
 
 export const revalidate = 86400;
 // Blog posts are code, not database rows: prerendering them costs nothing.
@@ -30,6 +31,7 @@ export default function PostPage({ params }: { params: { slug: string } }) {
       <Breadcrumbs items={[{ name: "Guides", href: "/blog" }, { name: p.title }]} />
       <p className="text-xs text-muted">{p.updated ? `Updated ${p.updated}` : p.date}</p>
       <h1 className="mt-2 font-display text-3xl font-black md:text-4xl">{p.title}</h1>
+      <ShareButton path={`/blog/${p.slug}`} name={p.title} medium="guide" text={`${p.title}, on ${SITE.name}`} className="mt-3" />
       <p className="mt-3 text-lg text-muted">{p.description}</p>
       <div className="prose-site mt-6 overflow-x-auto" dangerouslySetInnerHTML={{ __html: renderPost(p.html) }} />
       <AdSlot slot={process.env.NEXT_PUBLIC_ADSENSE_SLOT_ARTICLE} className="my-6" />

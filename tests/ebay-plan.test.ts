@@ -172,11 +172,11 @@ test("sealed first (owner, 2026-11-19): every sealed product, the most clicked f
   const products = [p(1, "Enchanted"), p(2, "Rare", "sealed"), p(3, "Rare", "sealed"), p(4, "Rare", "sealed")];
   const ref = new Map<number, number | null>([[1, 90000], [2, 9000], [3, 9000], [4, 9000]]);
   const clicks = new Map([[1, 500], [2, 1], [3, 40], [4, 9]]);
-  const plan = (budget: number) => planEbayRefresh({ products, refUsdCents: ref, clicks30d: clicks, newSetIds: new Set(), state: {}, budget, now }, { US: 1 }).calls;
+  const plan = (budget: number) => planEbayRefresh({ products, refUsdCents: ref, clicks30d: clicks, newSetIds: new Set(), state: {}, budget, now }).calls;
   assert.deepEqual(plan(4).map((c) => c.product.id), [3, 4, 2, 1], "sealed by popularity, then the card");
   assert.deepEqual(plan(3).map((c) => c.product.id), [3, 4, 2], "a tight budget cuts the card, never a sealed product");
   // A due sealed product beats a due card even when the card has waited longer.
   const state = { 1: { US: { at: new Date(now.getTime() - 30 * 86_400_000).toISOString() } }, 3: { US: { at: new Date(now.getTime() - 3 * 86_400_000).toISOString() } } } as never;
-  const due = planEbayRefresh({ products: [products[0], products[2]], refUsdCents: ref, clicks30d: clicks, newSetIds: new Set(), state, budget: 1, now }, { US: 1 }).calls;
+  const due = planEbayRefresh({ products: [products[0], products[2]], refUsdCents: ref, clicks30d: clicks, newSetIds: new Set(), state, budget: 1, now }).calls;
   assert.deepEqual(due.map((c) => c.product.id), [3]);
 });

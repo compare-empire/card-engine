@@ -113,3 +113,19 @@ no ceiling of its own.
 Engine: `planEbayRefresh` ranks every sealed product above every card (`sealedFirst`), the most clicked first, and in
 each market a due sealed product goes before a due card. The daily budget (`SITE.ebay.dailyBudget`) and the app's
 live remaining count are unchanged. `tests/ebay-plan.test.ts` pins it.
+
+## 2026-11-19: Search-engine-first audit after the November 2026 core update
+
+Google's core-update guidance asks whether a page exists mainly to help people or mainly to catch a search, and names
+content "spread across a large network of sites" and re-dating pages to look fresh as warning signs. What changed here:
+
+- **Seasonal sale pages.** The same template put Boxing Day, January sales and Lunar New Year (and Valentine's Day where
+  a site has it) pages on every Compare site, indexed all year, each listing the same deals as the Black Friday page.
+  `saleIndexable` in `lib/sale-seasons.ts`: Lunar New Year and Valentine's Day pages are never indexed, Boxing Day and
+  January sales only from three weeks before the homepage links them until a week after they end; out of season they are
+  noindex, follow and out of the sitemap (`withoutOffSeasonSales`). The URLs stay live all year (URL freeze).
+- **Honest sitemap dates.** About, methodology, store-listing and similar prose pages no longer carry a lastmod of the
+  latest import: their words do not change with prices.
+- The footer no longer links the Lunar New Year page.
+
+Black Friday and Cyber Monday pages are unchanged (in season). Judge the effect on 1 to 8 Dec against 3 to 9 Nov.
